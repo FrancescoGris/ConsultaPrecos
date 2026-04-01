@@ -1,0 +1,296 @@
+
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .wrap { padding: 1.25rem 0; max-width: 700px; }
+  .tabs { display: flex; gap: 0; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 1.25rem; }
+  .tab { font-size: 14px; font-weight: 500; color: var(--color-text-secondary); padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; background: none; border-top: none; border-left: none; border-right: none; }
+  .tab.active { color: var(--color-text-primary); border-bottom-color: var(--color-text-primary); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .input-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .input-row input { flex: 1; }
+  .product-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+  .product-item { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+  .product-item.has-error { border-color: var(--color-border-danger); }
+  .product-info { flex: 1; min-width: 0; }
+  .product-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-id { font-size: 11px; color: var(--color-text-secondary); margin-top: 1px; }
+  .product-price { font-size: 17px; font-weight: 500; color: var(--color-text-primary); white-space: nowrap; }
+  .product-price.muted { font-size: 13px; color: var(--color-text-secondary); font-weight: 400; }
+  .product-price.err { font-size: 13px; color: var(--color-text-danger); font-weight: 400; }
+  .product-price.manual-tag { font-size: 17px; font-weight: 500; color: var(--color-text-secondary); }
+  .remove-btn { background: none; border: none; color: var(--color-text-secondary); cursor: pointer; font-size: 15px; padding: 4px 6px; line-height: 1; border-radius: 4px; flex-shrink: 0; }
+  .remove-btn:hover { color: var(--color-text-danger); background: var(--color-background-danger); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .empty { text-align: center; padding: 2rem; color: var(--color-text-secondary); font-size: 14px; border: 0.5px dashed var(--color-border-tertiary); border-radius: var(--border-radius-lg); }
+  .notice { font-size: 12px; color: var(--color-text-success); margin-top: 8px; height: 16px; }
+  .manual-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+  .manual-row input { width: 100px; flex: none; }
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--color-border-tertiary); border-top-color: var(--color-text-secondary); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 4px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hist-list { display: flex; flex-direction: column; gap: 6px; }
+  .hist-item { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 10px 14px; }
+  .hist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .hist-date { font-size: 12px; color: var(--color-text-secondary); }
+  .hist-count { font-size: 12px; color: var(--color-text-secondary); }
+  .hist-products { display: flex; flex-direction: column; gap: 3px; }
+  .hist-product { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+  .hist-pname { color: var(--color-text-primary); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 12px; }
+  .hist-pprice { color: var(--color-text-primary); font-weight: 500; white-space: nowrap; }
+  .hist-pprice.manual-tag { color: var(--color-text-secondary); }
+  .clear-hist { font-size: 12px; color: var(--color-text-secondary); background: none; border: 0.5px solid var(--color-border-tertiary); padding: 4px 10px; border-radius: var(--border-radius-md); cursor: pointer; }
+  .clear-hist:hover { color: var(--color-text-danger); border-color: var(--color-border-danger); }
+  .hist-actions { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: var(--border-radius-md); background: var(--color-background-success); color: var(--color-text-success); margin-left: 6px; }
+  .badge.manual { background: var(--color-background-warning); color: var(--color-text-warning); }
+</style>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('lista')">Lista atual</button>
+    <button class="tab" onclick="switchTab('historico')" id="tab-hist">Histórico</button>
+  </div>
+
+  <div class="panel active" id="panel-lista">
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="https://www.mercadolivre.com.br/..." />
+      <button onclick="addProduct()">Adicionar</button>
+    </div>
+
+    <div id="productList" class="product-list"></div>
+    <div id="emptyState" class="empty">Nenhum produto adicionado ainda.</div>
+
+    <div class="actions" id="actions" style="display:none;">
+      <button onclick="consultAll()">Consultar preços</button>
+      <button onclick="copyAll()">Copiar para planilha</button>
+      <button onclick="saveToHistory()" id="btnSave" style="display:none;">Salvar no histórico</button>
+      <button onclick="clearAll()" style="color:var(--color-text-secondary);">Limpar lista</button>
+    </div>
+    <div class="notice" id="copyNotice"></div>
+  </div>
+
+  <div class="panel" id="panel-historico">
+    <div class="hist-actions">
+      <button class="clear-hist" onclick="clearHistory()">Limpar histórico</button>
+    </div>
+    <div id="histList" class="hist-list"></div>
+    <div id="histEmpty" class="empty" style="display:none;">Nenhuma consulta salva ainda.</div>
+  </div>
+</div>
+
+<script>
+let products = [];
+let history = [];
+
+async function loadStorage() {
+  try {
+    const r = await window.storage.get('ml-products');
+    if (r) products = JSON.parse(r.value);
+  } catch(e) { products = []; }
+  try {
+    const r = await window.storage.get('ml-history');
+    if (r) history = JSON.parse(r.value);
+  } catch(e) { history = []; }
+  render();
+  renderHistory();
+}
+
+async function saveProducts() {
+  try { await window.storage.set('ml-products', JSON.stringify(products)); } catch(e) {}
+}
+
+async function saveHistoryStorage() {
+  try { await window.storage.set('ml-history', JSON.stringify(history)); } catch(e) {}
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  if (tab === 'lista') {
+    document.querySelectorAll('.tab')[0].classList.add('active');
+    document.getElementById('panel-lista').classList.add('active');
+  } else {
+    document.querySelectorAll('.tab')[1].classList.add('active');
+    document.getElementById('panel-historico').classList.add('active');
+    renderHistory();
+  }
+}
+
+function extractId(url) {
+  let m = url.match(/[?&#]wid=(MLB\d+)/i);
+  if (m) return m[1];
+  m = url.match(/item_id[=%3A]+(MLB\d+)/i);
+  if (m) return m[1];
+  m = url.match(/(MLB\d+)/i);
+  if (m) return m[1].toUpperCase();
+  return null;
+}
+
+function fmtPrice(val) {
+  return 'R$ ' + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function render() {
+  const list = document.getElementById('productList');
+  const empty = document.getElementById('emptyState');
+  const actions = document.getElementById('actions');
+  const btnSave = document.getElementById('btnSave');
+  list.innerHTML = '';
+  if (products.length === 0) {
+    empty.style.display = 'block';
+    actions.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  actions.style.display = 'flex';
+  const hasResult = products.some(p => p.status === 'done' || p.status === 'manual');
+  btnSave.style.display = hasResult ? 'inline-block' : 'none';
+
+  products.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'product-item' + (p.status === 'error' ? ' has-error' : '');
+    let priceHtml = '';
+    if (p.status === 'idle') priceHtml = '<span class="product-price muted">—</span>';
+    else if (p.status === 'loading') priceHtml = '<span class="product-price muted"><span class="spinner"></span>buscando</span>';
+    else if (p.status === 'error') {
+      priceHtml = `<div style="text-align:right;">
+        <div class="product-price err">Não encontrado</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px;">Informe o preço:</div>
+        <div class="manual-row">
+          <input type="number" placeholder="0,00" id="manual_${i}" step="0.01" />
+          <button onclick="setManual(${i})" style="font-size:12px;padding:4px 8px;">OK</button>
+        </div>
+      </div>`;
+    }
+    else if (p.status === 'manual') priceHtml = '<div style="text-align:right;"><span class="product-price manual-tag">' + fmtPrice(p.price) + '</span><div style="font-size:10px;color:var(--color-text-secondary);margin-top:1px;">manual</div></div>';
+    else if (p.status === 'done') priceHtml = '<span class="product-price">' + fmtPrice(p.price) + '</span>';
+
+    div.innerHTML = `
+      <div class="product-info">
+        <div class="product-name">${p.name || p.id}</div>
+        <div class="product-id">${p.id}</div>
+      </div>
+      ${priceHtml}
+      <button class="remove-btn" onclick="remove(${i})">✕</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function renderHistory() {
+  const list = document.getElementById('histList');
+  const empty = document.getElementById('histEmpty');
+  list.innerHTML = '';
+  if (history.length === 0) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  [...history].reverse().forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'hist-item';
+    const prods = entry.products.map(p =>
+      `<div class="hist-product">
+        <span class="hist-pname">${p.name}</span>
+        <span class="hist-pprice ${p.manual ? 'manual-tag' : ''}">${fmtPrice(p.price)}${p.manual ? ' <span style="font-size:10px;">(manual)</span>' : ''}</span>
+      </div>`
+    ).join('');
+    div.innerHTML = `
+      <div class="hist-header">
+        <span class="hist-date">${entry.date}</span>
+        <span class="hist-count">${entry.products.length} produto${entry.products.length > 1 ? 's' : ''}</span>
+      </div>
+      <div class="hist-products">${prods}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function addProduct() {
+  const input = document.getElementById('urlInput');
+  const url = input.value.trim();
+  if (!url) return;
+  const id = extractId(url);
+  if (!id) { alert('Link inválido. Use o botão Compartilhar → Copiar Link no anúncio.'); return; }
+  if (products.find(p => p.id === id)) { alert('Este produto já está na lista.'); return; }
+  products.push({ id, url, name: id, price: null, status: 'idle' });
+  input.value = '';
+  saveProducts();
+  render();
+}
+
+function remove(i) { products.splice(i, 1); saveProducts(); render(); }
+function clearAll() { products = []; saveProducts(); render(); }
+
+function setManual(i) {
+  const el = document.getElementById('manual_' + i);
+  const val = parseFloat(el.value.replace(',', '.'));
+  if (!val || val <= 0) { alert('Informe um preço válido.'); return; }
+  products[i].price = val;
+  products[i].status = 'manual';
+  saveProducts();
+  render();
+}
+
+async function fetchPrice(p) {
+  p.status = 'loading';
+  render();
+  try {
+    const res = await fetch('https://api.mercadolibre.com/items/' + p.id, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('not ok');
+    const data = await res.json();
+    p.price = data.price;
+    p.name = data.title || p.id;
+    p.status = 'done';
+  } catch(e) {
+    p.status = 'error';
+  }
+  saveProducts();
+  render();
+}
+
+async function consultAll() {
+  for (const p of products) {
+    if (p.status !== 'done' && p.status !== 'manual') await fetchPrice(p);
+  }
+}
+
+function copyAll() {
+  const ready = products.filter(p => p.status === 'done' || p.status === 'manual');
+  if (ready.length === 0) { alert('Consulte os preços primeiro.'); return; }
+  const text = ready.map(p => p.name + '\t' + p.price.toFixed(2).replace('.', ',')).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const n = document.getElementById('copyNotice');
+    n.textContent = 'Copiado! Cole na sua planilha com Ctrl+V.';
+    setTimeout(() => n.textContent = '', 3000);
+  });
+}
+
+function saveToHistory() {
+  const ready = products.filter(p => p.status === 'done' || p.status === 'manual');
+  if (ready.length === 0) return;
+  const now = new Date();
+  const date = now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  history.push({
+    date,
+    products: ready.map(p => ({ name: p.name, price: p.price, manual: p.status === 'manual' }))
+  });
+  saveHistoryStorage();
+  renderHistory();
+  const n = document.getElementById('copyNotice');
+  n.textContent = 'Salvo no histórico!';
+  setTimeout(() => n.textContent = '', 2500);
+}
+
+function clearHistory() {
+  if (!confirm('Limpar todo o histórico?')) return;
+  history = [];
+  saveHistoryStorage();
+  renderHistory();
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') addProduct(); });
+
+loadStorage();
+</script>
