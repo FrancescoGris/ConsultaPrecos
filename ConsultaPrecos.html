@@ -237,7 +237,7 @@ async function fetchPrice(p) {
   p.status = 'loading';
   render();
   try {
-    const res = await fetch('https://api.mercadolibre.com/items/' + p.id, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch('https://corsproxy.io/?url=https://api.mercadolibre.com/items/MLBXXX' + p.id, { headers: { 'Accept': 'application/json' } });
     if (!res.ok) throw new Error('not ok');
     const data = await res.json();
     p.price = data.price;
